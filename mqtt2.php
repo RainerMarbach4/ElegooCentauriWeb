@@ -1,7 +1,8 @@
 <?php
 error_reporting(E_ALL);
 ini_set("display_errors", 1);
-require ('config.php');
+
+require "./config.php";
 require "../vendor/autoload.php";
 
 use \PhpMqtt\Client\MqttClient;
@@ -62,7 +63,12 @@ $registerJson = array(
 $mqtt->publish('elegoo/' . $serialNo3d .'/api_register', json_encode($registerJson), 0);
 sleep(2);
 // Do command
+
+
 $mqtt->publish('elegoo/' . $serialNo3d . '/' . $registerId . '/api_request', $startPrintJson, 0);
+
+
+
 $mqtt->disconnect();
 
 

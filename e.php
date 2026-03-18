@@ -56,7 +56,7 @@ function uploadFilePut($filePath, $host, $token, $fileNameHeader = null)
 
 
 try {
-    uploadFilePut($file, "192.168.1.36", "LLcnjA");
+    uploadFilePut($file, $server, $key);
     echo "Success! $file";
 } catch (Exception $e) {
     echo "Failed to upload";
