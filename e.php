@@ -3,7 +3,7 @@
 error_reporting(E_ALL);
 ini_set("display_errors", 1);
 
-require ('config.php');
+require ('../config_elegoo.php');
 
 function uploadFilePut($filePath, $host, $token, $fileNameHeader = null)
 {
@@ -56,9 +56,13 @@ function uploadFilePut($filePath, $host, $token, $fileNameHeader = null)
 
 
 try {
-    uploadFilePut($file, $server, $key);
-    echo "Success! $file";
+    $result = uploadFilePut($file, $server, $key);
+    if ($result['status'] >= 200 && $result['status'] < 300) {
+        echo "Success! $file uploaded to $server\n";
+    } else {
+        echo "Upload failed with status code: " . $result['status'] . "\n";
+        echo "Response: " . $result['response'] . "\n";
+    }
 } catch (Exception $e) {
-    echo "Failed to upload";
-    echo $e;
+    echo "Error: " . $e->getMessage() . "\n";
 }
