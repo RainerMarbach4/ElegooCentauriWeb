@@ -1,0 +1,19 @@
+# Disable directory listing
+Options -Indexes
+
+# Set default index file
+DirectoryIndex index.php
+
+# Allow access by default (so index.php and scripts work)
+Order Allow,Deny
+Allow from all
+
+# Protect sensitive files
+<FilesMatch "\.(gcode|git|idea)$">
+    Deny from all
+</FilesMatch>
+
+# Protect hidden files (.gitignore, .htaccess, etc.)
+<FilesMatch "^\.">
+    Deny from all
+</FilesMatch>
