@@ -1,0 +1,20 @@
+
+  Session ID:                               │
+│  Auth Method:                Signed in with Google (rainer@langheiter.at)        │
+│  Tier:
+
+- gibt es mit dem repo sicherheits oder malware hinweise 
+- verschiebe config.php an sicheren ort und include sie e.php mqtt2.php  
+- ein directory listing ist leider noch möglich. README soll lesbar sein          
+- die erste zeile in der README soll fett und gross angezeigt werden
+-  in mqtt2.php wird die methode 1044 == fileliste des centauri carbon 2 und die methode 1020     
+   == starte druck job verwendet. erstelle mir eine datei mit allen gültigen methoden und         
+   deren parametern. in https://github.com/ELEGOO-3D/elegoo-link  sollten die restlichen methosen     
+   zu finden sein  
+-
+
+
+
+
+/home/rainer/.local/bin:   /usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games:/snap/bin:/home/rainer/.local/share/JetBrains/Toolbox/scripts
+           ~/.local/bin/claude
