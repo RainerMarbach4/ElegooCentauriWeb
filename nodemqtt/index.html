@@ -83,11 +83,11 @@
                 const currentVal = sel.value;
                 sel.innerHTML = '';
                 if (availableTrays.length === 0) {
-                    for(let i=1; i<=4; i++) sel.innerHTML += `<option value="${i}">${i}</option>`;
+                    for(let i=0; i<4; i++) sel.innerHTML += `<option value="${i}">Slot ${i+1}</option>`;
                 } else {
                     availableTrays.forEach((t, i) => {
                         const colorStyle = t.filament_color ? `style="background:${t.filament_color}; color:${getContrastYIQ(t.filament_color)}"` : '';
-                        sel.innerHTML += `<option value="${i+1}" ${colorStyle}>Slot ${i+1}: ${t.filament_type || 'Empty'}</option>`;
+                        sel.innerHTML += `<option value="${i}" ${colorStyle}>Slot ${i+1}: ${t.filament_type || 'Empty'}</option>`;
                     });
                 }
                 if (currentVal) sel.value = currentVal;
@@ -202,7 +202,7 @@
 
         window.electronAPI.onUploadSuccess((fn) => {
             const slot = document.getElementById('upload-slot').value;
-            document.getElementById('upload-status').textContent = `Upload ok! Starte Slot ${slot}: ${fn}`;
+            document.getElementById('upload-status').textContent = `Upload ok! Starte Slot ${parseInt(slot)+1}: ${fn}`;
             setTimeout(() => window.electronAPI.startPrint(fn, slot), 1000);
         });
         window.electronAPI.onUploadError((err) => { alert("Upload Fehler: " + err); });
