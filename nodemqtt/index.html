@@ -55,7 +55,11 @@
 
     <div class="upload-section">
         <h3 style="margin-top:0">Upload & Print</h3>
-        <button class="btn btn-blue" onclick="handleUpload()">GCode Datei wählen...</button>
+        <div style="margin-bottom:15px">
+            <label style="font-size:12px; color:#94a3b8">Filament Slot: </label>
+            <select id="upload-slot" style="margin-right:10px"></select>
+            <button class="btn btn-blue" onclick="handleUpload()">GCode Datei wählen...</button>
+        </div>
         <div id="upload-status" style="margin-top:10px; font-size: 13px; color: #94a3b8;">Bereit</div>
     </div>
 
@@ -68,12 +72,39 @@
     <div id="log">Warte auf Daten...</div>
 
     <script>
-        let lastKnownState = 1;
+        let lastKnownState = 1; // 1: IDLE, 2: PRINTING, 3: PAUSED
         let lastNozzleTarget = "--";
         let lastBedTarget = "--";
+        let availableTrays = [];
+
+        function updateSlotSelectors() {
+            const selectors = document.querySelectorAll('select[id$="-slot"], select[id^="s_"]');
+            selectors.forEach(sel => {
+                const currentVal = sel.value;
+                sel.innerHTML = '';
+                if (availableTrays.length === 0) {
+                    for(let i=1; i<=4; i++) sel.innerHTML += `<option value="${i}">${i}</option>`;
+                } else {
+                    availableTrays.forEach((t, i) => {
+                        const colorStyle = t.filament_color ? `style="background:${t.filament_color}; color:${getContrastYIQ(t.filament_color)}"` : '';
+                        sel.innerHTML += `<option value="${i+1}" ${colorStyle}>Slot ${i+1}: ${t.filament_type || 'Empty'}</option>`;
+                    });
+                }
+                if (currentVal) sel.value = currentVal;
+            });
+        }
+
+        function getContrastYIQ(hexcolor){
+            if (!hexcolor || hexcolor === "transparent") return 'white';
+            hexcolor = hexcolor.replace("#", "");
+            var r = parseInt(hexcolor.substr(0,2),16);
+            var g = parseInt(hexcolor.substr(2,2),16);
+            var b = parseInt(hexcolor.substr(4,2),16);
+            var yiq = ((r*299)+(g*587)+(b*114))/1000;
+            return (yiq >= 128) ? 'black' : 'white';
+        }
 
         window.electronAPI.onMqttData((data) => {
-            // Update Log Window
             const log = document.getElementById('log');
             const d = document.createElement('div');
             d.textContent = `[${new Date().toLocaleTimeString()}] ${data.payload}`;
@@ -87,31 +118,25 @@
 
                 // --- 1. Machine Status & Sticky Logic ---
                 if (r.machine_status) {
-                    const s = r.machine_status.status;
-                    const p = r.machine_status.progress || 0;
-                    let display = s;
-                    if (s === 1 && p > 0 && p < 100) display = 2; // Keep PRINTING if progress active
-                    lastKnownState = display;
+                    let s = r.machine_status.status;
+                    const p = r.machine_status.progress !== undefined ? r.machine_status.progress : 0;
+                    
+                    // STICKY LOGIC: Ignoriere IDLE (1), wenn der Fortschritt zwischen 1% und 99% liegt
+                    if (s === 1 && p > 0 && p < 100) {
+                        s = (lastKnownState === 3) ? 3 : 2; 
+                    }
+                    lastKnownState = s;
 
                     const states = {1: "IDLE", 2: "PRINTING", 3: "PAUSED", 4: "ERROR"};
                     const el = document.getElementById('state');
-                    el.textContent = states[display] || "IDLE";
-                    el.style.color = display === 2 ? 'var(--green)' : (display === 3 ? 'var(--accent)' : '#fff');
+                    el.textContent = states[s] || "IDLE";
+                    el.style.color = s === 2 ? 'var(--green)' : (s === 3 ? 'var(--accent)' : '#fff');
                     
                     document.getElementById('percent').textContent = p + "%";
                     document.getElementById('fill').style.width = p + "%";
 
-                    // Show/Hide controls
-                    const controls = document.getElementById('job-controls');
-                    const btnPause = document.getElementById('btn-pause');
-                    const btnResume = document.getElementById('btn-resume');
-                    if (display === 2 || display === 3) {
-                        controls.style.display = 'flex';
-                        btnPause.style.display = (display === 2) ? 'block' : 'none';
-                        btnResume.style.display = (display === 3) ? 'block' : 'none';
-                    } else {
-                        controls.style.display = 'none';
-                    }
+                    // Buttons nur bei PRINTING oder PAUSED anzeigen
+                    document.getElementById('job-controls').style.display = (s === 2 || s === 3) ? 'flex' : 'none';
                 }
 
                 // --- 2. Print Details & Time ---
@@ -126,32 +151,26 @@
                     document.getElementById('time-left').textContent = "--:-- verbleibend";
                 }
 
-                // --- 3. Temperatures & NaN Fix ---
+                // --- 3. Temperatures ---
                 if (r.extruder) {
                     const t = Math.round(r.extruder.temperature);
                     if (r.extruder.target !== undefined) lastNozzleTarget = Math.round(r.extruder.target);
-                    if (!isNaN(t)) {
-                        document.getElementById('nozzle').textContent = t + "° / " + lastNozzleTarget + "°";
-                        const inp = document.getElementById('t-nozzle');
-                        if (inp.value === "" && document.activeElement !== inp) inp.value = t;
-                    }
+                    if (!isNaN(t)) document.getElementById('nozzle').textContent = t + "° / " + lastNozzleTarget + "°";
                 }
                 if (r.heater_bed) {
                     const t = Math.round(r.heater_bed.temperature);
                     if (r.heater_bed.target !== undefined) lastBedTarget = Math.round(r.heater_bed.target);
-                    if (!isNaN(t)) {
-                        document.getElementById('bed').textContent = t + "° / " + lastBedTarget + "°";
-                        const inp = document.getElementById('t-bed');
-                        if (inp.value === "" && document.activeElement !== inp) inp.value = t;
-                    }
+                    if (!isNaN(t)) document.getElementById('bed').textContent = t + "° / " + lastBedTarget + "°";
                 }
 
                 // --- 4. Filament / Canvas Info ---
                 if (r.canvas_info && r.canvas_info.canvas_list && r.canvas_info.canvas_list[0]) {
                     const slot = r.canvas_info.active_tray_id;
-                    const trays = r.canvas_info.canvas_list[0].tray_list || [];
-                    if (slot !== -1 && trays[slot]) {
-                        const tray = trays[slot];
+                    availableTrays = r.canvas_info.canvas_list[0].tray_list || [];
+                    updateSlotSelectors();
+                    
+                    if (slot !== -1 && availableTrays[slot]) {
+                        const tray = availableTrays[slot];
                         document.getElementById('filament-text').textContent = `Slot ${slot+1}: ${tray.filament_type}`;
                         document.getElementById('filament-dot').style.backgroundColor = tray.filament_color || '#fff';
                         document.getElementById('filament-info').style.display = 'inline-flex';
@@ -169,9 +188,11 @@
             files.forEach(f => {
                 const name = typeof f === 'string' ? f : (f.name || f.filename);
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td><strong>${name}</strong></td><td><select id="s_${name.replace(/\W/g,'_')}"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></td><td><button class="btn btn-green" onclick="window.electronAPI.startPrint('${name}', document.getElementById('s_${name.replace(/\W/g,'_')}').value)">Drucken</button></td>`;
+                const slotId = `s_${name.replace(/\W/g,'_')}`;
+                tr.innerHTML = `<td><strong>${name}</strong></td><td><select id="${slotId}"></select></td><td><button class="btn btn-green" onclick="window.electronAPI.startPrint('${name}', document.getElementById('${slotId}').value)">Drucken</button></td>`;
                 tbody.appendChild(tr);
             });
+            updateSlotSelectors();
         }
 
         async function handleUpload() {
@@ -180,10 +201,13 @@
         }
 
         window.electronAPI.onUploadSuccess((fn) => {
- document.getElementById('upload-status').textContent = `Upload ok! Starte: ${fn}`; setTimeout(() => window.electronAPI.startPrint(fn, 1), 1000); });
+            const slot = document.getElementById('upload-slot').value;
+            document.getElementById('upload-status').textContent = `Upload ok! Starte Slot ${slot}: ${fn}`;
+            setTimeout(() => window.electronAPI.startPrint(fn, slot), 1000);
+        });
         window.electronAPI.onUploadError((err) => { alert("Upload Fehler: " + err); });
         function applyTemp(type, id) { const v = document.getElementById(id).value; if (v) window.electronAPI.setTemperature(type, v); }
-        setTimeout(() => window.electronAPI.requestFiles(), 2000);
+        setTimeout(() => { updateSlotSelectors(); window.electronAPI.requestFiles(); }, 2000);
     </script>
 </body>
 </html>
